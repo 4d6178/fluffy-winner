@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<options>
+	<port value="8080" />
+
+	<methods>
+		<method name = "OPTIONS" />
+		<method name = "GET" />
+		<method name = "HEAD" />
+		<method name = "POST" />
+		<method name = "PUT" />
+		<method name = "DELETE" />
+		<method name = "TRACE" />
+	</methods>
+
+</options>
+ 
+</xml
