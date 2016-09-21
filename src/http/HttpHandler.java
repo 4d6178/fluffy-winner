@@ -2,7 +2,7 @@ package http;
 
 public class HttpHandler {
 
-	public boolean handler(HttpRequest httpRequest){
+	public boolean handle(HttpRequest httpRequest){
 		
 		return false;
 	}

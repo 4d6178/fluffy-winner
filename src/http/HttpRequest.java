@@ -12,6 +12,8 @@ public class HttpRequest {
 	private String requestURI;
 	private String httpVersion;
 	private String messageBody;
+	private boolean isHttpRequestWithError = true;
+
 	private Map<String, String> methods = new HashMap<String, String>();
 
 	public HttpRequest() {
@@ -76,5 +78,14 @@ public class HttpRequest {
 	public void setMessageBody(String messageBody) {
 		this.messageBody = messageBody;
 	}
+	
+	public boolean isHttpRequestWithError() {
+		return isHttpRequestWithError;
+	}
+
+	public void setHttpRequestWithError(boolean isHttpRequestWithError) {
+		this.isHttpRequestWithError = isHttpRequestWithError;
+	}
+
 
 }
