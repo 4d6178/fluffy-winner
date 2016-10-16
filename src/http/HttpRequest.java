@@ -1,7 +1,6 @@
 package http;
 
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -19,19 +18,19 @@ public class HttpRequest {
 	public HttpRequest() {
 
 	}
-	
-	public String toString(){
+
+	public String toString() {
 		System.out.println("method = " + method);
 		System.out.println("requestURI = " + requestURI);
 		System.out.println("httpVersion = " + httpVersion);
-		
+
 		Set<Entry<String, String>> sets = methods.entrySet();
-		for(Entry<String, String> set : sets){
+		for (Entry<String, String> set : sets) {
 			System.out.println(set.getKey() + " " + set.getValue());
 		}
-		
+
 		System.out.println("body " + messageBody);
-		
+
 		return null;
 	}
 
@@ -42,7 +41,7 @@ public class HttpRequest {
 	public Map<String, String> getMethods() {
 		return methods;
 	}
-	
+
 	public String getMethodValueByKey(String key) {
 		return methods.get(key);
 	}
@@ -78,7 +77,7 @@ public class HttpRequest {
 	public void setMessageBody(String messageBody) {
 		this.messageBody = messageBody;
 	}
-	
+
 	public boolean isHttpRequestWithError() {
 		return isHttpRequestWithError;
 	}
@@ -86,6 +85,5 @@ public class HttpRequest {
 	public void setHttpRequestWithError(boolean isHttpRequestWithError) {
 		this.isHttpRequestWithError = isHttpRequestWithError;
 	}
-
 
 }

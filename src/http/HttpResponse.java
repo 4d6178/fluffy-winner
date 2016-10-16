@@ -68,14 +68,22 @@ public class HttpResponse {
 
 	public String generateResponse() {
 		String response = "";
-		response += getResponseStartLine() + getNewLine();
-		Set<Entry<String, String>> set = headers.entrySet();
-		for (Entry<String, String> entry : set) {
-			response += entry.getKey() + ":" + entry.getValue() + getNewLine();
+		response += getResponseStartLine();
+		if (!headers.isEmpty()) {
+			response += getNewLine();
+			Set<Entry<String, String>> set = headers.entrySet();
+			for (Entry<String, String> entry : set) {
+				response += entry.getKey() + ":" + entry.getValue()
+						+ getNewLine();
+			}
+			response += getBodySeparator() + getMessageBody()
+					+ getBodySeparator();
+		} else {
+			response += getNewLine();
 		}
-		response += getBodySeparator() + getMessageBody() + getNewLine();
-		return response;
 
+		System.out.println(response);
+		return response;
 	}
 
 }

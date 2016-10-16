@@ -1,207 +1,118 @@
 package http;
 
+import java.util.Set;
+
 public class HttpRequestParser {
 
-	HttpRequest httpRequest;
+	private HttpRequest httpRequest;
+	private boolean isParsedException;
+	private boolean isParsingEnd;
+	private int eNumber;
+	private String eMessage;
 
-	private String doubleNewLine;
-	private String unParsedData;
-	private boolean isParsedException = false;
-	private boolean isParsingEnd = false;
-
-	private int eNumber = -1;
-
-	private enum fsmState {
-		One, Two, Three, Four
-	};
-
-	private int MAX_START_LINE_SiZE = 1024;
-	private int MAX_HEADERS_SIZE = 1024;
-	private int MAX_BODY_SIZE = 2048;
-
-	private boolean isStartLine;
-	private fsmState state = fsmState.One;
-	private boolean isMethod;
-	private boolean isBody;
-
-	private int contentRead;
-	private int startLineSize;
-	private int headersLineSize;
-	private int headersNewLineCount;
-	private int bodyReadCount;
-
-	public HttpRequestParser() {
-		this.isStartLine = true;
-		this.unParsedData = "";
-		this.doubleNewLine = "   ";
-		this.startLineSize = 0;
-		this.headersLineSize = 0;
-		this.headersNewLineCount = 0;
-		this.bodyReadCount = 0;
-		this.httpRequest = new HttpRequest();
+	public HttpRequestParser(HttpRequest httpRequest) {
+		this.isParsedException = false;
+		this.isParsingEnd = false;
+		this.eNumber = -1;
+		this.eMessage = null;
+		this.httpRequest = httpRequest;
 	}
-
-	public void getNext(String data) throws Exception {
-		if (state == fsmState.One) {
-			readStartLine(data);
-		} else if (state == fsmState.Two) {
-			readHeadersLine(data);
-		} else if (state == fsmState.Three) {
-			if (httpRequest.getMethod().equals("POST")) {
-				String contentSize = httpRequest
-						.getMethodValueByKey("Content-Length");
-				int contentLength = 0;
-				if (null != contentSize) {
-					contentLength = Integer.parseInt(contentSize);
-				}
-				if (contentLength > 0 && contentLength < MAX_BODY_SIZE) {
-					readBody(data, contentLength);
-
-					//httpRequest.setHttpRequestWithError(false);
-				}
-			}
-		}
-	}
-
-	/*
-	 * unParsedData += data; if (!data.equals("\n") && !isBody) { if (isMethod)
-	 * { doubleNewLine = doubleNewLine.substring(1, 3) + data; } return true; }
-	 * else if ((isBody && contentRead < contentLength)) { contentRead++; if
-	 * (contentRead == contentLength) {
-	 * httpRequest.setMessageBody(unParsedData); return false; } return true; }
-	 * else { if (parse(data)) { return true; } }
-	 */
 
 	public boolean isParsedException() {
 		return isParsedException;
 	}
 
-	private void readStartLine(String data) throws Exception {
-		if (startLineSize < MAX_START_LINE_SiZE && !data.equals("\n")) {
-			unParsedData += data;
-		} else {
-			parseStartLine(unParsedData);
-		}
-	}
-
-	private void readHeadersLine(String data) throws Exception {
-		if (data.equals("\n") || data.equals("\r")) {
-			headersNewLineCount += 1;
-		} else {
-			headersNewLineCount = 0;
-		}
-		if (headersLineSize < MAX_HEADERS_SIZE && headersNewLineCount < 4) {
-			unParsedData += data;
-		} else {
-			parseHeadersLine(unParsedData);
-			unParsedData = "";
-		}
-
-	}
-
-	private void readBody(String data, int contentLenght) {
-		if (bodyReadCount < contentLenght) {
-			bodyReadCount += 1;
-			unParsedData += data;
-			if (bodyReadCount == contentLenght) {
-				httpRequest.setMessageBody(unParsedData);
-				// httpRequest.toString();
-				isParsingEnd = true;
-			}
-		}
-	}
-
-	private boolean parseHeadersLine(String unParsedHeadersLine)
+	public void parseStartLine(String unParsedStartLine, boolean urlTooLong)
 			throws Exception {
-		String[] headers = unParsedHeadersLine.trim().split("\r\n");
-		for (String header : headers) {
-			String[] methodsData = header.split(": ");
-			if (methodsData.length != 2) {
-				isParsedException = true;
-				return false;
-			} else {
-				httpRequest.addHeader(methodsData[0], methodsData[1]);
-			}
-
-		}
-		if (httpRequest.getMethod().equals("POST")) {
-			state = fsmState.Three;
+		if (urlTooLong) {
+			exception(true, true, 414, "414 Request-URL Too Long");
+		} else if (unParsedStartLine.split(" ").length != 3) {
+			exception(true, true, 400, "400 Bad Request");
 		} else {
-			isParsingEnd = true;
-		}
-
-		return true;
-	}
-
-	private boolean parseStartLine(String unParsedStartLine) throws Exception {
-		if (unParsedStartLine.split(" ").length != 3) {
-			isParsedException = true;
-			isParsingEnd = true;
-			System.out.println("Error in start line");
-		} else {
-			String[] start = unParsedData.split(" ");
-			if (start[0].equals("POST") || start[0].equals("GET")) {
-				httpRequest.setMethod(start[0]);
-				httpRequest.setRequestURI(start[1]);
-				if (start[2].equals("HTTP/0.9") || start[2].equals("HTTP/1.0")
-						|| start[2].trim().equals("HTTP/1.1")) {
-					httpRequest.setHttpVersion(start[2]);
-					state = fsmState.Two;
-					unParsedData = "";
-
-					return true;
+			String[] startLine = unParsedStartLine.split(" ");
+			if (startLine[0].equals("POST") || startLine[0].equals("GET")) {
+				httpRequest.setMethod(startLine[0]);
+				httpRequest.setRequestURI(startLine[1]);
+				if (startLine[2].trim().equals("HTTP/1.1")) {
+					httpRequest.setHttpVersion(startLine[2].trim());
 				} else {
-					throw new Exception("http version");
-					// Exception, incorrect http version
+					exception(true, true, 400, "400 Bad Request");
 				}
 			} else {
-				throw new Exception("method");
-				// Exception, incorrect method
-
+				exception(true, true, 405, "405 Method Not Allowed");
 			}
-
 		}
-		return false;
 	}
 
-	// private boolean parse(String data) throws HTTPException { if
-	// (isStartLine) { if (!parseHeader()) { return false; // error, bad start
-	// line } unParsedData = ""; isStartLine = false; isMethod = true;
-	// doubleNewLine = doubleNewLine.substring(1, 3) + data; return true; } else
-	// if (isMethod) { if (data.equals("\n") && doubleNewLine.equals("\r\n\r"))
-	// { if (!parseMethods()) { return false; } if
-	// (httpRequest.getMethods().containsKey("Content-Length")) { contentLength
-	// = Integer.parseInt(httpRequest .getMethodValueByKey("Content-Length")); }
-	//
-	// if (contentLength <= 0) { return false; } unParsedData = ""; isMethod =
-	// false; isBody = true; } doubleNewLine = doubleNewLine.substring(1, 3) +
-	// data; return true; } return false; }
+	public void parseHeadersLine(String unParsedHeadersLine, boolean urlTooLong)
+			throws Exception {
+		if (urlTooLong) {
+			exception(true, true, 414, "414 Request-URL Too Long");
+		} else {
+			String[] headers = unParsedHeadersLine.trim().split("\r\n");
+			for (String header : headers) {
+				String[] methodsData = header.split(": ");
+				if (methodsData.length != 2) {
+					exception(true, true, 400, "400 Bad Request");
+				} else {
+					httpRequest.addHeader(methodsData[0], methodsData[1]);
+				}
+			}
+			if (httpRequest.getMethod().equals("GET")) {
+				isParsingEnd = true;
+			}
+			if (httpRequest.getMethod().equals("POST")) {
+				Set<String> keys = httpRequest.getMethods().keySet();
+				boolean isContentTypeExists = false;
+				boolean isContentLengthExists = false;
+				for (String key : keys) {
+					if (key.equals("Content-Length")) {
+						isContentLengthExists = true;
+					} else if (key.equals("Content-Type")) {
+						isContentTypeExists = true;
+					}
+				}
+				if (!isContentLengthExists) {
+					exception(true, true, 411, "411 Length Required");
+				}
+				if (!isContentTypeExists) {
+					exception(true, true, 404, "404 Not Found");
+				}
+				if (isContentLengthExists) {
+					try {
+						String contentLength = httpRequest
+								.getMethodValueByKey("Content-Length");
+						int cntntLength = Integer.valueOf(contentLength);
+						if (cntntLength < 0) {
+							exception(true, true, 404, "404 Not Found");
+						}
+					} catch (NumberFormatException e) {
+						exception(true, true, 404, "404 Not Found");
+					}
+				}
+				if (isContentTypeExists) {
+					String contentType = httpRequest
+							.getMethodValueByKey("Content-Type");
+					if (!contentType.equals("text/html")
+							&& !contentType.equals("text/plain")
+							&& !contentType.equals("application/octet-stream")
+							&& !contentType.equals("application/json")
+							&& !contentType
+									.equals("application/x-www-form-urlencoded")) {
+						exception(true, true, 415, "415 Unsupported Media Type");
+					}
+				}
+			}
+		}
+	}
 
-	// private boolean parseHeader() throws HTTPException { if
-	// (unParsedData.equals("") || unParsedData.split(" ").length != 3) { throw
-	// new HTTPException(400); } else { // need to check methods. work only with
-	// post and set. users // answer may consists another methods or not
-	// available methods String[] start = unParsedData.split(" ");
-	// httpRequest.setMethod(start[0]); httpRequest.setRequestURI(start[1]);
-	// httpRequest.setHttpVersion(start[2]); return true; }
-
-	// return false; }
-
-	// private boolean parseMethods() throws HTTPException {
-	// if (unParsedData.equals("")) {
-	// throw new HTTPException(400);
-	// }
-	// String[] methodLine = unParsedData.split("\r\n");
-	// for (String methodLn : methodLine) {
-	// String[] method = methodLn.split(": ");
-	// if (method.length == 2) {
-	// httpRequest.addHeader(method[0], method[1]);
-	// } else {
-	// return false;
-	// }
-	// }
-	// return true;
-	// }
+	private void exception(boolean isParsedException, boolean isParsingEnd,
+			int eNumber, String eMessage) {
+		this.isParsedException = isParsedException;
+		this.isParsingEnd = isParsingEnd;
+		this.eNumber = eNumber;
+		this.eMessage = eMessage;
+	}
 
 	public HttpRequest getHttpRequest() {
 		return httpRequest;
@@ -211,8 +122,8 @@ public class HttpRequestParser {
 		return eNumber;
 	}
 
-	public String getUnParsedData() {
-		return unParsedData;
+	public String geteMessage() {
+		return eMessage;
 	}
 
 	public boolean isParsingEnd() {

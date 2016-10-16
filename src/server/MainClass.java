@@ -6,7 +6,7 @@ public class MainClass {
 
 		HttpServer httpServer = new HttpServer(8080);
 		httpServer.serve();
-		
+
 	}
 
 }
