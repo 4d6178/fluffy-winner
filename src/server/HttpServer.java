@@ -11,7 +11,7 @@ import java.util.Map;
 public class HttpServer {
 
 	private int port;
-	private int timeout = 1000; // ms
+	private int timeout = 100; // ms
 	public static Map<String, String> clientsData;
 
 	private int DEFAULT_PORT = 8080;
@@ -24,17 +24,48 @@ public class HttpServer {
 		}
 	}
 
-	public void serve() {
+	public void serve() throws InterruptedException {
 		try {
 			ServerSocket serverSocket = new ServerSocket(port);
 			clientsData = new HashMap<String, String>();
 			while (true) {
 				Socket socket = serverSocket.accept();
-				new Thread(new SocketProcessor(socket, timeout)).start();
+				if (null != socket) {
+					Thread t = new Thread(new SocketProcessor(socket));
+					t.start();
+					Thread s = new Thread(new Timer(timeout, t));
+					s.setDaemon(true);
+					s.start();
+				}
 			}
 		} catch (IOException e) {
 			System.out.println("Exception: " + e.getMessage());
 		}
+	}
+	
+	private class Timer implements Runnable{
+		
+		private int timeout;
+		private Thread t;
+		
+		Timer(int timeout, Thread t){
+			this.timeout = timeout;
+			this.t = t;
+		}
+
+		@Override
+		public void run() {
+			try {
+				Thread.sleep(timeout);
+				if(t.isAlive()){
+					t.interrupt();
+				}
+			} catch (InterruptedException e) {
+				System.out.println(e);
+			}
+			
+		}
+		
 	}
 
 }

@@ -18,26 +18,24 @@ public class SocketProcessor implements Runnable {
 	private int DEFAULT_BUFFER_SIZE = 1;
 
 	private Socket socket;
-	private int timeout;
 	private InputStream inputStream;
 	private OutputStream outputStream;
 
-	public SocketProcessor(Socket socket, int timeout) {
+	public SocketProcessor(Socket socket) {
 		this.socket = socket;
-		this.timeout = timeout;
 	}
 
 	public void run() {
 		try {
 			inputStream = socket.getInputStream();
 			HttpRequestReader httpRequestReader = new HttpRequestReader();
-			while (true) {
-				readInputData(httpRequestReader);
-				addAddiction(httpRequestReader);
-				generateAnswer(httpRequestReader);
-				inputStream.close();
-				socket.close();
-			}
+			// while (true) {
+			readInputData(httpRequestReader);
+			addAddiction(httpRequestReader);
+			generateAnswer(httpRequestReader);
+			inputStream.close();
+			socket.close();
+			// }
 		} catch (Exception e) {
 			System.out.println(e.getMessage());
 		} finally {
@@ -55,22 +53,31 @@ public class SocketProcessor implements Runnable {
 		BufferedInputStream bis = new BufferedInputStream(inputStream);
 		InputStreamReader isr = new InputStreamReader(bis);
 		char[] buf = new char[DEFAULT_BUFFER_SIZE];
-		while (true) {
-			StringBuffer process = new StringBuffer();
-			isr.read(buf);
-			if (null != buf && buf.length > 0) {
-				process.append(buf[0]);
-				System.out.print(buf[0]);
-				try {
-					httpRequestReader.getNext(process.toString());
-					if (httpRequestReader.isParsingEnd()
-							|| httpRequestReader.isParsedException()) {
-						break;
+		try {
+			while (true) {
+				if (!Thread.currentThread().isInterrupted()) {
+					StringBuffer process = new StringBuffer();
+					isr.read(buf);
+					if (null != buf && buf.length > 0) {
+						process.append(buf[0]);
+						System.out.print(buf[0]);
+						try {
+							httpRequestReader.getNext(process.toString());
+							if (httpRequestReader.isParsingEnd()
+									|| httpRequestReader.isParsedException()) {
+								break;
+							}
+						} catch (HTTPException e) {
+							System.out.println(e.getMessage());
+						}
 					}
-				} catch (HTTPException e) {
-					System.out.println(e.getMessage());
-				} 
+				} else {
+					sendRequestTimeout();
+					break;
+				}
 			}
+		} catch (InterruptedException e) {
+			sendRequestTimeout();
 		}
 
 	}
@@ -86,6 +93,17 @@ public class SocketProcessor implements Runnable {
 		}
 	}
 
+	private void sendRequestTimeout() throws IOException {
+		outputStream = socket.getOutputStream();
+		BufferedOutputStream bos = new BufferedOutputStream(outputStream);
+		OutputStreamWriter osw = new OutputStreamWriter(bos);
+		osw.write("HTTP/1.1 408 Request Timeout\r\n");
+
+		osw.flush();
+		osw.close();
+		outputStream.close();
+	}
+
 	private void generateAnswer(HttpRequestReader httpRequestReader)
 			throws IOException {
 		HttpResponse httpResponse = new HttpResponse();
@@ -95,9 +113,10 @@ public class SocketProcessor implements Runnable {
 		HttpResponseGenerator httpResponseGenerator = new HttpResponseGenerator(
 				httpResponse, httpRequestReader);
 		osw.write(httpResponseGenerator.getResponse());
-		
+
 		osw.flush();
 		osw.close();
 		outputStream.close();
 	}
+
 }

@@ -106,7 +106,7 @@ public class HttpRequestParser {
 		}
 	}
 
-	private void exception(boolean isParsedException, boolean isParsingEnd,
+	public void exception(boolean isParsedException, boolean isParsingEnd,
 			int eNumber, String eMessage) {
 		this.isParsedException = isParsedException;
 		this.isParsingEnd = isParsingEnd;
